@@ -7,6 +7,7 @@
 
 DMU11::DMU11(ros::NodeHandle &nh)
 {
+    header_ = 0x55aa;
     terminate_flag_ = 0;
     imuPub = nh.advertise<sensor_msgs::Imu>("data/raw", 10);
 }
@@ -88,15 +89,15 @@ int DMU11::openPort(std::string device_path)
     //
     // Define com port options
     //
-    defaults_.c_cflag |=  (CLOCAL | CREAD);		// Enable the receiver and set local mode...
-    defaults_.c_cflag &= ~(PARENB|CSTOPB|CSIZE);	// No parity, 1 stop bit, mask character size bits
-    defaults_.c_cflag |= CS8;						// Select 8 data bits
-    defaults_.c_cflag &= ~CRTSCTS;				// Disable Hardware flow control
+    defaults_.c_cflag |= (CLOCAL | CREAD);    // Enable the receiver and set local mode...
+    defaults_.c_cflag &= ~(PARENB | CSTOPB | CSIZE);  // No parity, 1 stop bit, mask character size bits
+    defaults_.c_cflag |= CS8;            // Select 8 data bits
+    defaults_.c_cflag &= ~CRTSCTS;        // Disable Hardware flow control
 
     //
     // Disable software flow control
     //
-    defaults_.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL|IXON);
+    defaults_.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
 
     //
     // We would like raw input
@@ -107,8 +108,8 @@ int DMU11::openPort(std::string device_path)
     //
     // Set our timeout to 0
     //
-    defaults_.c_cc[VMIN]     = 0;
-    defaults_.c_cc[VTIME]    = 1;
+    defaults_.c_cc[VMIN] = 0;
+    defaults_.c_cc[VTIME] = 1;
 
     if (tcsetattr(file_descriptor_, TCSAFLUSH, &defaults_) != 0)
         std::cout << "Failed to set attributes to the serial port.\n";
@@ -183,7 +184,7 @@ int DMU11::getProductID(int16_t &pid)
 {
     // get product ID
     int r;
-    unsigned char buff[20];
+     char buff[20];
 
     // Sending data
     buff[0] = 0x04;
@@ -238,33 +239,68 @@ int DMU11::getProductID(int16_t &pid)
  * @param data Head pointer to the data
  * @retrun converted value
  */
-int16_t DMU11::big_endian_to_short(unsigned char *data)
+int16_t DMU11::big_endian_to_short(char *data)
 {
-    unsigned char buff[2] = {data[1], data[0]};
+    char buff[2] = {data[1], data[0]};
     return *reinterpret_cast<int16_t *>(buff);
 }
 
+/**
+ * @brief change big endian 4 byte into float
+ * @param data Head pointer to the data
+ * @retrun converted value
+ */
+float DMU11::big_endian_to_float(unsigned char *data)
+{
+    unsigned char buff[4] = {data[3], data[2], data[1], data[0]};
+    return *reinterpret_cast<float *>(buff);
+}
+
+
 void DMU11::update()
 {
-    //Reading data
-    std::cout << "Message stream started: \n";
+    usleep(1000000);
 
     do
     {
-        unsigned char buff[68] = {0};
-        usleep(1000000);
-        int size = read(file_descriptor_, buff, (ssize_t) 68);
+        DMU11::dmu_package package;
+        DMU11::bit32 input32;
+
+//        unsigned char buff[68] = {0};
+        char buff[68] = {0};
+
+        usleep(100000);
+
+        int size = read(file_descriptor_, buff, 68);
         if (size != 68)
         {
-            perror("update_burst");
+            std::cout << "size: " << size;
+            perror("read failed");
             continue;
         }
 
+        int16_t computed_checksum = 0;
+        int16_t input16 = big_endian_to_short(&buff[0]);
+        int16_t int16buff[33] = {0};
 
-        for (int i = 0; i < 68; i++)
+
+        if (input16 == header_)
         {
-            std::cout << std::hex << (int)buff[i] ;
-//            std::cout << "..." << big_endian_to_short(&buff[i]) << "...\n";
+            package.header = input16;
+            std::cout << "Header: " << std::hex << input16 << "\n";
+
+            for (int i = 0; i < 64; i += 2)
+            {
+                int16buff[i / 2] = big_endian_to_short(&buff[i]);
+                computed_checksum += int16buff[i / 2] ;
+                std::cout << "Buffer [ " << i / 2 << " ]: " << int16buff[i / 2] << "\n";
+
+            }
+            computed_checksum = ~computed_checksum+0x0001;
+            computed_checksum = computed_checksum&0xffff;
+            int16_t checksum = big_endian_to_short(&buff[67]);
+            std::cout << "Checksum: " << checksum << "\n";
+            std::cout << "Computed Checksum: " << computed_checksum << "\n";
         }
         std::cout << "\n...end of 68 bytes package...\n";
 
@@ -278,6 +314,7 @@ void DMU11::update()
     raw_data.header.stamp = ros::Time::now();
 
 }
+
 
 
 
