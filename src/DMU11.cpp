@@ -3,12 +3,18 @@
 //
 
 #include <DMU11.h>
+#include <bitset>
 
 
 DMU11::DMU11(ros::NodeHandle &nh)
 {
-    header_ = 0x55aa;
     terminate_flag_ = 0;
+
+    // Read parameters
+    nh.param("device", device_, std::string("/dev/ttyUSB0"));
+    nh.param("frame_id", frame_id_, std::string("imu"));
+    nh.param("rate", rate_, 100.0);
+
     imuPub = nh.advertise<sensor_msgs::Imu>("data/raw", 10);
 }
 
@@ -57,7 +63,7 @@ int DMU11::openPort(std::string device_path)
     if (cfsetispeed(&defaults_, B460800) < 0 || cfsetospeed(&defaults_, B460800) < 0)
         std::cout << "Couldnt set the desired baud rate \n";
     else
-        std::cout << "Baud rate is set accordingly \n";
+        std::cout << "Baud rate is set to: \n";
 
 
     /**********************************
@@ -90,9 +96,12 @@ int DMU11::openPort(std::string device_path)
     // Define com port options
     //
     defaults_.c_cflag |= (CLOCAL | CREAD);    // Enable the receiver and set local mode...
-    defaults_.c_cflag &= ~(PARENB | CSTOPB | CSIZE);  // No parity, 1 stop bit, mask character size bits
+//    defaults_.c_cflag &= ~(PARENB | CSTOPB | CSIZE);  // No parity, 1 stop bit, mask character size bits
+    defaults_.c_cflag &= ~(PARENB | CSIZE);  // No parity, mask character size bits
+    defaults_.c_cflag &= CSTOPB;        //2 stop bits
+
     defaults_.c_cflag |= CS8;            // Select 8 data bits
-    defaults_.c_cflag &= ~CRTSCTS;        // Disable Hardware flow control
+//    defaults_.c_cflag &= ~CRTSCTS;        // Disable Hardware flow control
 
     //
     // Disable software flow control
@@ -116,6 +125,7 @@ int DMU11::openPort(std::string device_path)
     else
         std::cout << "Desired configurations are set to serial port. \n";
 
+    usleep(100000);
 
     unsigned char buff0[3] = {0};
     buff0[0] = 0x34;
@@ -132,9 +142,6 @@ int DMU11::openPort(std::string device_path)
     {
         perror("Stop stream");
     }
-
-
-    usleep(100000);
 
     unsigned char buff1[3] = {0};
     buff1[0] = 0x34;
@@ -184,7 +191,7 @@ int DMU11::getProductID(int16_t &pid)
 {
     // get product ID
     int r;
-     char buff[20];
+    unsigned char buff[20];
 
     // Sending data
     buff[0] = 0x04;
@@ -239,9 +246,9 @@ int DMU11::getProductID(int16_t &pid)
  * @param data Head pointer to the data
  * @retrun converted value
  */
-int16_t DMU11::big_endian_to_short(char *data)
+int16_t DMU11::big_endian_to_short(unsigned char *data)
 {
-    char buff[2] = {data[1], data[0]};
+    unsigned char buff[2] = {data[1], data[0]};
     return *reinterpret_cast<int16_t *>(buff);
 }
 
@@ -250,68 +257,89 @@ int16_t DMU11::big_endian_to_short(char *data)
  * @param data Head pointer to the data
  * @retrun converted value
  */
-float DMU11::big_endian_to_float(unsigned char *data)
+float DMU11::short_to_float(int16_t *data)
 {
-    unsigned char buff[4] = {data[3], data[2], data[1], data[0]};
+    int16_t buff[2] = {data[1], data[0]};
     return *reinterpret_cast<float *>(buff);
 }
 
 
 void DMU11::update()
 {
-    usleep(1000000);
 
-    do
+    unsigned char buff[68] = {0};
+
+    int size = read(file_descriptor_, buff, 68);
+    if (size != 68)
     {
-        DMU11::dmu_package package;
-        DMU11::bit32 input32;
+        std::cout << "size: " << size;
+        perror("read failed");
+        return;
+    }
 
-//        unsigned char buff[68] = {0};
-        char buff[68] = {0};
+    int16_t computed_checksum = 0;
+    int16_t input16 = big_endian_to_short(&buff[0]);
+    int16_t int16buff[34] = {0};
 
-        usleep(100000);
+    if (input16 == header_)
+    {
+        package_.header = input16;
+        std::cout << "Header: " << std::hex << input16 << "\n";
 
-        int size = read(file_descriptor_, buff, 68);
-        if (size != 68)
+        for (int i = 0; i < 66; i += 2)
         {
-            std::cout << "size: " << size;
-            perror("read failed");
-            continue;
+            int16buff[i / 2] = big_endian_to_short(&buff[i]);
+            computed_checksum += int16buff[i / 2];
         }
 
-        int16_t computed_checksum = 0;
-        int16_t input16 = big_endian_to_short(&buff[0]);
-        int16_t int16buff[33] = {0};
+        computed_checksum = ~computed_checksum + 0x0001;
 
+        int16_t checksum = big_endian_to_short(&buff[66]);
 
-        if (input16 == header_)
+        if (checksum == computed_checksum)
+            doParsing(&int16buff[0]);
+        else
         {
-            package.header = input16;
-            std::cout << "Header: " << std::hex << input16 << "\n";
-
-            for (int i = 0; i < 64; i += 2)
-            {
-                int16buff[i / 2] = big_endian_to_short(&buff[i]);
-                computed_checksum += int16buff[i / 2] ;
-                std::cout << "Buffer [ " << i / 2 << " ]: " << int16buff[i / 2] << "\n";
-
-            }
-            computed_checksum = ~computed_checksum+0x0001;
-            computed_checksum = computed_checksum&0xffff;
-            int16_t checksum = big_endian_to_short(&buff[67]);
+            std::cout << "Package is corrupt...\n";
             std::cout << "Checksum: " << checksum << "\n";
             std::cout << "Computed Checksum: " << computed_checksum << "\n";
+            return;
         }
-        std::cout << "\n...end of 68 bytes package...\n";
+    }
+    std::cout << "\n...end of 68 bytes package...\n";
+
+}
+
+void DMU11::doParsing(int16_t *int16buff)
+{
+    package_.axis_x_rate = short_to_float(&int16buff[2]) * M_PI / 180; //Conver to rad/s
+    package_.axis_x_acc = short_to_float(&int16buff[4]) / g_; // We divide by g_ to convert from g's into m/s^2
+    package_.axis_y_rate = short_to_float(&int16buff[6]) * M_PI / 180;
+    package_.axis_y_acc = short_to_float(&int16buff[8]) / g_;
+    package_.axis_z_rate = short_to_float(&int16buff[10]) * M_PI / 180;
+    package_.axis_z_acc = short_to_float(&int16buff[12]) / g_;
+
+    raw_data_.header.frame_id = frame_id_;
+    raw_data_.header.stamp = ros::Time::now();
+
+    raw_data_.linear_acceleration.x = package_.axis_x_acc;
+    raw_data_.linear_acceleration.y = package_.axis_y_acc;
+    raw_data_.linear_acceleration.z = package_.axis_z_acc;
+
+    raw_data_.angular_velocity.x = package_.axis_x_rate;
+    raw_data_.angular_velocity.y = package_.axis_y_rate;
+    raw_data_.angular_velocity.z = package_.axis_z_rate;
 
 
-    } while (terminate_flag_ == 0);
+    package_.axis_x_delta_theta = short_to_float(&int16buff[18]);
+    package_.axis_x_delta_vel = short_to_float(&int16buff[20]);
+    package_.axis_y_delta_theta = short_to_float(&int16buff[22]);
+    package_.axis_y_delta_vel = short_to_float(&int16buff[24]);
+    package_.axis_z_delta_theta = short_to_float(&int16buff[26]);
+    package_.axis_z_delta_vel = short_to_float(&int16buff[28]);
 
-    //Converting to ROS format
-    sensor_msgs::Imu raw_data;
 
-    raw_data.header.frame_id = "imu";
-    raw_data.header.stamp = ros::Time::now();
+    imuPub.publish(raw_data_);
 
 }
 

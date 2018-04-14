@@ -27,9 +27,16 @@ int main(int argc, char *argv[])
 
     imu->openPort(device_path);
 
-    usleep(10000);
+    usleep(100000);
 
-    imu->update();
+    ros::Rate rate(10);
+
+    while (ros::ok() && !imu->terminate_flag_)
+    {
+        imu->update();
+        ros::spinOnce();
+        rate.sleep();
+    }
 
     int16_t pid = 0;
 //    imu.getProductID(pid);
@@ -37,7 +44,6 @@ int main(int argc, char *argv[])
 
     imu->closePort();
 
-    ros::spin();
 
     return 0;
 }
