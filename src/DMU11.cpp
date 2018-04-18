@@ -128,9 +128,9 @@ int DMU11::openPort(std::string device_path)
     usleep(100000);
 
     unsigned char buff0[3] = {0};
-    buff0[0] = 0x34;
-    buff0[1] = 0x31;
-    buff0[2] = 0x30;  // Turn message stream off
+    buff0[0] = 0x04;
+    buff0[1] = 0x01;
+    buff0[2] = 0x00;  // Turn message stream off
 
     int size = write(file_descriptor_, buff0, 3);
     if (size != 3)
@@ -144,9 +144,9 @@ int DMU11::openPort(std::string device_path)
     }
 
     unsigned char buff1[3] = {0};
-    buff1[0] = 0x34;
-    buff1[1] = 0x31;
-    buff1[2] = 0x31;  // Turn message stream on
+    buff1[0] = 0x04;
+    buff1[1] = 0x01;
+    buff1[2] = 0x01;  // Turn message stream on
 
     size = write(file_descriptor_, buff1, 3);
     if (size != 3)
@@ -313,11 +313,11 @@ void DMU11::update()
 void DMU11::doParsing(int16_t *int16buff)
 {
     package_.axis_x_rate = short_to_float(&int16buff[2]) * M_PI / 180; //Conver to rad/s
-    package_.axis_x_acc = short_to_float(&int16buff[4]) / g_; // We divide by g_ to convert from g's into m/s^2
+    package_.axis_x_acc = short_to_float(&int16buff[4]) * g_; // We divide by g_ to convert from g's into m/s^2
     package_.axis_y_rate = short_to_float(&int16buff[6]) * M_PI / 180;
-    package_.axis_y_acc = short_to_float(&int16buff[8]) / g_;
+    package_.axis_y_acc = short_to_float(&int16buff[8]) * g_;
     package_.axis_z_rate = short_to_float(&int16buff[10]) * M_PI / 180;
-    package_.axis_z_acc = short_to_float(&int16buff[12]) / g_;
+    package_.axis_z_acc = short_to_float(&int16buff[12]) * g_;
 
     raw_data_.header.frame_id = frame_id_;
     raw_data_.header.stamp = ros::Time::now();

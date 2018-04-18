@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 
     usleep(100000);
 
-    ros::Rate rate(10);
+    ros::Rate rate(200);
 
     while (ros::ok() && !imu->terminate_flag_)
     {
