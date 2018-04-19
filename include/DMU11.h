@@ -27,7 +27,6 @@ class DMU11
     struct dmu_package
     {
         //                              // WORD
-        int16_t header;                 //  0
         int16_t msg_count;              //  1
         float axis_x_rate;              //  2-3
         float axis_x_acc;               //  4-5

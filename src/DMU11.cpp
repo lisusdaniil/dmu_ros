@@ -39,10 +39,10 @@ int DMU11::openPort(std::string device_path)
             std::cout << "Opening serial port: " << device_path.c_str() << " \n";
         else
             std::cout << "Still couldn't open \n";
-        file_descriptor_ = open(device_path.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
-        fcntl(file_descriptor_, F_SETFL, FNDELAY);    /*configuration the port*/
-//        file_descriptor_ = open(device_path.c_str(), O_RDWR | O_NOCTTY);
-
+        file_descriptor_ = open(device_path.c_str(), O_RDWR | O_NOCTTY);
+        int opts = fcntl(file_descriptor_, F_GETFL);
+        opts = opts & (O_NONBLOCK);
+        fcntl(file_descriptor_, F_SETFL, opts);    /*configuration the port*/
     } while (file_descriptor_ == -1);
 
     if (isatty(file_descriptor_))
@@ -117,10 +117,10 @@ int DMU11::openPort(std::string device_path)
     //
     // Set our timeout to 0
     //
-    defaults_.c_cc[VMIN] = 0;
-    defaults_.c_cc[VTIME] = 1;
+    defaults_.c_cc[VMIN] = 2;
+    defaults_.c_cc[VTIME] = 0;
 
-    if (tcsetattr(file_descriptor_, TCSAFLUSH, &defaults_) != 0)
+    if (tcsetattr(file_descriptor_, TCSANOW, &defaults_) != 0)
         std::cout << "Failed to set attributes to the serial port.\n";
     else
         std::cout << "Desired configurations are set to serial port. \n";
@@ -270,43 +270,91 @@ void DMU11::update()
     unsigned char buff[68] = {0};
 
     int size = read(file_descriptor_, buff, 68);
-    if (size != 68)
+    if (size < 68)
     {
-        std::cout << "size: " << size;
-        perror("read failed");
+        perror("Less than 68 bytes");
         return;
     }
-
-    int16_t computed_checksum = 0;
-    int16_t input16 = big_endian_to_short(&buff[0]);
-    int16_t int16buff[34] = {0};
-
-    if (input16 == header_)
+    else if (size == 68)
     {
-        package_.header = input16;
-        std::cout << "Header: " << std::hex << input16 << "\n";
 
-        for (int i = 0; i < 66; i += 2)
+        int16_t computed_checksum = 0;
+        int16_t input16 = big_endian_to_short(&buff[0]);
+        int16_t int16buff[34] = {0};
+
+        if (input16 == header_)
         {
-            int16buff[i / 2] = big_endian_to_short(&buff[i]);
-            computed_checksum += int16buff[i / 2];
+            for (int i = 0; i < 66; i += 2)
+            {
+                int16buff[i / 2] = big_endian_to_short(&buff[i]);
+                computed_checksum += int16buff[i / 2];
+            }
+
+            computed_checksum = ~computed_checksum + 0x0001;
+
+            int16_t checksum = big_endian_to_short(&buff[66]);
+
+            if (checksum == computed_checksum)
+            {
+                std::cout << "Package is OK...\n";
+                std::cout << "Checksum: " << checksum << "\n";
+                std::cout << "Computed Checksum: " << computed_checksum << "\n";
+                doParsing(&int16buff[0]);
+                std::cout << "...end of 68 bytes package...\n";
+            }
+            else
+            {
+                std::cout << "Package is corrupt...\n";
+                std::cout << "Checksum: " << checksum << "\n";
+                std::cout << "Computed Checksum: " << computed_checksum << "\n";
+                return;
+            }
         }
-
-        computed_checksum = ~computed_checksum + 0x0001;
-
-        int16_t checksum = big_endian_to_short(&buff[66]);
-
-        if (checksum == computed_checksum)
-            doParsing(&int16buff[0]);
         else
         {
-            std::cout << "Package is corrupt...\n";
-            std::cout << "Checksum: " << checksum << "\n";
-            std::cout << "Computed Checksum: " << computed_checksum << "\n";
-            return;
+
+            std::cout << "********************\n";
+            std::cout << "******Restart*******\n";
+            std::cout << "********************\n";
+            unsigned char buff1[3] = {0};
+            buff1[0] = 0x04;
+            buff1[1] = 0x01;
+            buff1[2] = 0x00;  // Turn message stream off
+            size = write(file_descriptor_, buff1, 3);
+            if (size != 3)
+            {
+                perror("Start stream");
+            }
+
+            if (tcdrain(file_descriptor_) < 0)
+            {
+                perror("Start stream");
+            }
+
+            usleep(100000);
+            tcflush(file_descriptor_, TCIFLUSH);
+
+            buff1[0] = 0x04;
+            buff1[1] = 0x01;
+            buff1[2] = 0x01;  // Turn message stream on
+            size = write(file_descriptor_, buff1, 3);
+            if (size != 3)
+            {
+                perror("Start stream");
+            }
+
+            if (tcdrain(file_descriptor_) < 0)
+            {
+                perror("Start stream");
+            }
+            usleep(100000);
+
         }
     }
-    std::cout << "\n...end of 68 bytes package...\n";
+    else
+    {
+        std::cout << "More than 68 bytes received: " << size << "\n";
+    }
 
 }
 
