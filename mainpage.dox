@@ -1,0 +1,16 @@
+/*! \mainpage DMU11 ROS driver
+ *
+# Introduction
+
+This driver reads data through serial port, parses and publishes those data in ROS message format
+
+# Installation
+
+> git clone repo inside a catkin workspace src folder.
+> catkin_make
+ 
+> rosrun dmu_ros dmu_ros_node or
+ 
+> roslaunch dmu_ros dmu_ros.launch	
+
+*/

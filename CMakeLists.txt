@@ -11,6 +11,7 @@ set(CMAKE_BUILD_TYPE Debug)
 find_package(catkin REQUIRED COMPONENTS
         sensor_msgs
         roscpp
+        tf
         )
 
 ## System dependencies are found with CMake's conventions
@@ -125,7 +126,6 @@ add_library(DMU11_LIB
         src/DMU11.cpp
         include/DMU11.h
         )
-
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries

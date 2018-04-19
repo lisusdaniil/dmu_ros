@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<robot name="adis16470">
+<robot name="dmu11">
   <link name="imu">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>

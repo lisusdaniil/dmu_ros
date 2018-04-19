@@ -7,6 +7,7 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
+#include <tf/tf.h>
 #include <termios.h>
 #include <string>
 #include <iostream>
@@ -46,11 +47,9 @@ class DMU11
         //-----------------------------------------
         int16_t system_startup_flags;   //  30
         int16_t system_operat_flags;    //  31
-        //--Reserved--
-        int16_t checksum;               //  33
+
     } package_;
-    //IMU ROS format
-    sensor_msgs::Imu raw_data_;
+
 
     //Constants
     const double g_ = 9.80665;
@@ -59,34 +58,57 @@ class DMU11
     struct termios defaults_;
 
 public:
+//IMU ROS format
+    sensor_msgs::Imu raw_data_;
+
+    double d_roll_ = 0;
+    double d_pitch_ = 0;
+    double d_yaw_ = 0;
+
     volatile sig_atomic_t terminate_flag_;
 
-    union bit16
-    {
-        unsigned char chbuff[2];
-        int16_t int16;
-    };
-
-    union bit32
-    {
-        unsigned char chbuff[4];
-        float fbuff;
-    };
-
+/**
+ * @brief Constructor
+ * @param nh
+ */
     DMU11(ros::NodeHandle &nh);
 
+/**
+ * @brief Open device
+ * @param device Device file name (/dev/ttyUSB*)
+ * @retval 0 Success
+ * @retval -1 Failure
+ */
     int openPort(std::string device_path);
 
-    int getProductID(int16_t &pid);
-
+/**
+ * @brief Read the data received on serial port
+ */
     void update();
 
+/**
+* @brief Gets the raw data and converts them to standard ROS IMU message
+* @param int16buff
+*/
     void doParsing(int16_t *int16buff);
 
+/**
+ * @brief Close the device
+ */
     void closePort();
 
+/**
+ * @brief change big endian 2 byte into short
+ * @param data Head pointer to the data
+ * @retrun converted value
+ */
     int16_t big_endian_to_short(unsigned char *data);
 
+/**
+ * @brief change big endian short into float
+ * @param data Head pointer to the data
+ * @retrun converted value
+ */
     float short_to_float(int16_t *data);
 
     virtual ~DMU11();
