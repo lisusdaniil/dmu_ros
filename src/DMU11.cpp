@@ -19,6 +19,7 @@ DMU11::DMU11(ros::NodeHandle &nh)
 }
 
 
+
 int DMU11::openPort(std::string device_path)
 {
     int trials = 0;
@@ -27,7 +28,7 @@ int DMU11::openPort(std::string device_path)
         if (trials++ == 0)
             std::cout << "Opening serial port: " << device_path.c_str() << " \n";
         else
-            std::cout << "Still couldn't open \n";
+            std::cout << "Couldn't open serial port... \n";
         file_descriptor_ = open(device_path.c_str(), O_RDWR | O_NOCTTY);
         int opts = fcntl(file_descriptor_, F_GETFL);
         opts = opts & (~O_NONBLOCK);
@@ -59,18 +60,9 @@ int DMU11::openPort(std::string device_path)
     defaults_.c_cflag &= ~(PARENB | CSIZE);  // No parity, mask character size bits
     defaults_.c_cflag &= CSTOPB;        //2 stop bits
     defaults_.c_cflag |= CS8;            // Select 8 data bits
-
-    //
-    // Disable software flow control
-    //
     defaults_.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
-
-    //
-    // We would like raw input
-    //
     defaults_.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG /*| IEXTEN | ECHONL*/);
     defaults_.c_oflag &= ~OPOST;
-
 
     defaults_.c_cc[VMIN] = 2;       //Minimum - two bytes
     defaults_.c_cc[VTIME] = 0;
@@ -83,12 +75,13 @@ int DMU11::openPort(std::string device_path)
 
     usleep(10000);
 
-    unsigned char buff0[3] = {0};
-    buff0[0] = 0x04;
-    buff0[1] = 0x01;
-    buff0[2] = 0x00;  // Turn message stream off
+    unsigned char buff[3] = {0};
+    // Turn message stream off sequence
+    buff[0] = 0x04;
+    buff[1] = 0x01;
+    buff[2] = 0x00;
 
-    int size = write(file_descriptor_, buff0, 3);
+    int size = write(file_descriptor_, buff, 3);
     if (size != 3)
     {
         perror("Stop stream");
@@ -101,12 +94,12 @@ int DMU11::openPort(std::string device_path)
         return -1;
     }
 
-    unsigned char buff1[3] = {0};
-    buff1[0] = 0x04;
-    buff1[1] = 0x01;
-    buff1[2] = 0x01;  // Turn message stream on
+    // Turn message stream on sequence
+    buff[0] = 0x04;
+    buff[1] = 0x01;
+    buff[2] = 0x01;
 
-    size = write(file_descriptor_, buff1, 3);
+    size = write(file_descriptor_, buff, 3);
     if (size != 3)
     {
         perror("Start stream");
@@ -121,38 +114,6 @@ int DMU11::openPort(std::string device_path)
 
     return 0;
 }
-
-
-void DMU11::closePort()
-{
-    if (tcsetattr(file_descriptor_, TCSANOW, &defaults_) < 0)
-    {
-        perror("closePort");
-    }
-    int diag;
-    do
-    {
-        diag = close(file_descriptor_);
-    } while (diag == -1);
-
-    std::cout << "Serial Port got closed.";
-
-}
-
-
-int16_t DMU11::big_endian_to_short(unsigned char *data)
-{
-    unsigned char buff[2] = {data[1], data[0]};
-    return *reinterpret_cast<int16_t *>(buff);
-}
-
-
-float DMU11::short_to_float(int16_t *data)
-{
-    int16_t buff[2] = {data[1], data[0]};
-    return *reinterpret_cast<float *>(buff);
-}
-
 
 void DMU11::update()
 {
@@ -185,13 +146,7 @@ void DMU11::update()
             int16_t checksum = big_endian_to_short(&buff[66]);
 
             if (checksum == computed_checksum)
-            {
-                std::cout << "Package is OK...\n";
-                std::cout << "Checksum: " << checksum << "\n";
-                std::cout << "Computed Checksum: " << computed_checksum << "\n";
                 doParsing(&int16buff[0]);
-                std::cout << "...end of 68 bytes package...\n";
-            }
             else
             {
                 std::cout << "Package is corrupt...\n";
@@ -242,6 +197,36 @@ void DMU11::update()
         }
     }
 
+}
+
+void DMU11::closePort()
+{
+    if (tcsetattr(file_descriptor_, TCSANOW, &defaults_) < 0)
+    {
+        perror("closePort");
+    }
+    int diag;
+    do
+    {
+        diag = close(file_descriptor_);
+    } while (diag == -1);
+
+    std::cout << "Serial Port got closed.";
+
+}
+
+
+
+int16_t DMU11::big_endian_to_short(unsigned char *data)
+{
+    unsigned char buff[2] = {data[1], data[0]};
+    return *reinterpret_cast<int16_t *>(buff);
+}
+
+float DMU11::short_to_float(int16_t *data)
+{
+    int16_t buff[2] = {data[1], data[0]};
+    return *reinterpret_cast<float *>(buff);
 }
 
 void DMU11::doParsing(int16_t *int16buff)

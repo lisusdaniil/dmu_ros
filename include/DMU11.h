@@ -87,12 +87,6 @@ public:
     void update();
 
 /**
-* @brief Gets the raw data and converts them to standard ROS IMU message
-* @param int16buff
-*/
-    void doParsing(int16_t *int16buff);
-
-/**
  * @brief Close the device
  */
     void closePort();
@@ -110,6 +104,13 @@ public:
  * @retrun converted value
  */
     float short_to_float(int16_t *data);
+
+/**
+* @brief Gets the raw data and converts them to standard ROS IMU message
+* @param int16buff
+*/
+    void doParsing(int16_t *int16buff);
+
 
     virtual ~DMU11();
 

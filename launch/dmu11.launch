@@ -4,7 +4,7 @@
   <arg name="frame_id" default="imu"/>
   <arg name="rate" default="200"/>
 
-  <param if="$(arg with_rviz)" name="robot_description" command="$(find xacro)/xacro --inorder '$(find dmu_ros)/urdf/dmu.urdf'" />
+  <param if="$(arg with_rviz)" name="robot_description" command="$(find xacro)/xacro --inorder '$(find dmu_ros)/urdf/dmu11.urdf'" />
 
   <node name="dmu_ros_node" pkg="dmu_ros" type="dmu_ros_node">
     <param name="device" value="$(arg device)"/>

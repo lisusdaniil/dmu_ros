@@ -3,7 +3,6 @@
 #include <tf/transform_broadcaster.h>
 #include <DMU11.h>
 
-
 std::shared_ptr<DMU11> imu;
 
 void signalHandler(int sig)
@@ -26,14 +25,12 @@ int main(int argc, char *argv[])
 
     std::string device_path("/dev/ttyUSB0");
 
-//    nh.getParam("/dmu_ros_node/device", device_path);
-
     imu->openPort(device_path);
 
     usleep(100000);
 
-    ros::Rate rate(200);
 
+    ros::Rate rate(200);
     while (ros::ok() && !imu->terminate_flag_)
     {
         static double roll, pitch, yaw;
