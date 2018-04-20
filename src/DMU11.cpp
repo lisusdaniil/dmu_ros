@@ -31,7 +31,7 @@ int DMU11::openPort(std::string device_path)
             std::cout << "Couldn't open serial port... \n";
         file_descriptor_ = open(device_path.c_str(), O_RDWR | O_NOCTTY);
         int opts = fcntl(file_descriptor_, F_GETFL);
-        opts = opts & (~O_NONBLOCK);
+        opts = opts & (O_NONBLOCK);
         fcntl(file_descriptor_, F_SETFL, opts);    /*configuration the port*/
     } while (file_descriptor_ == -1);
 
@@ -58,13 +58,13 @@ int DMU11::openPort(std::string device_path)
     //
     defaults_.c_cflag |= (CLOCAL | CREAD);    // Enable the receiver and set local mode...
     defaults_.c_cflag &= ~(PARENB | CSIZE);  // No parity, mask character size bits
-    defaults_.c_cflag &= CSTOPB;        //2 stop bits
+    defaults_.c_cflag |= CSTOPB;        //2 stop bits
     defaults_.c_cflag |= CS8;            // Select 8 data bits
     defaults_.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
     defaults_.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG /*| IEXTEN | ECHONL*/);
     defaults_.c_oflag &= ~OPOST;
 
-    defaults_.c_cc[VMIN] = 2;       //Minimum - two bytes
+    defaults_.c_cc[VMIN] = 68;       //Minimum - two bytes
     defaults_.c_cc[VTIME] = 0;
 
     if (tcsetattr(file_descriptor_, TCSANOW, &defaults_) != 0)
@@ -76,7 +76,14 @@ int DMU11::openPort(std::string device_path)
     usleep(10000);
 
     unsigned char buff[3] = {0};
-    // Turn message stream off sequence
+
+    tcflush(file_descriptor_,TCIFLUSH);
+    if (tcdrain(file_descriptor_) < 0)
+    {
+        perror("flush");
+        return -1;
+    }
+/*    // Turn message stream off sequence
     buff[0] = 0x04;
     buff[1] = 0x01;
     buff[2] = 0x00;
@@ -92,14 +99,14 @@ int DMU11::openPort(std::string device_path)
     {
         perror("Stop stream");
         return -1;
-    }
+    }*/
 
     // Turn message stream on sequence
     buff[0] = 0x04;
     buff[1] = 0x01;
     buff[2] = 0x01;
 
-    size = write(file_descriptor_, buff, 3);
+    int size = write(file_descriptor_, buff, 3);
     if (size != 3)
     {
         perror("Start stream");
