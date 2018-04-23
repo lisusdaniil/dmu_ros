@@ -15,7 +15,7 @@ DMU11::DMU11(ros::NodeHandle &nh)
     nh.param("frame_id", frame_id_, std::string("imu"));
     nh.param("rate", rate_, 100.0);
 
-    imuPub = nh.advertise<sensor_msgs::Imu>("data/raw", 10);
+    imuPub = nh.advertise<sensor_msgs::Imu>("imu/data_raw", 10);
 }
 
 
@@ -83,23 +83,6 @@ int DMU11::openPort(std::string device_path)
         perror("flush");
         return -1;
     }
-/*    // Turn message stream off sequence
-    buff[0] = 0x04;
-    buff[1] = 0x01;
-    buff[2] = 0x00;
-
-    int size = write(file_descriptor_, buff, 3);
-    if (size != 3)
-    {
-        perror("Stop stream");
-        return -1;
-    }
-
-    if (tcdrain(file_descriptor_) < 0)
-    {
-        perror("Stop stream");
-        return -1;
-    }*/
 
     // Turn message stream on sequence
     buff[0] = 0x04;

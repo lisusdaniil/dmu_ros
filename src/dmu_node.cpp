@@ -25,6 +25,12 @@ int main(int argc, char *argv[])
 
     std::string device_path("/dev/ttyUSB0");
 
+    if (nh.hasParam("device"))
+        nh.getParam("/device", device_path);
+    else
+        device_path = "/dev/ttyUSB0";
+
+
     imu->openPort(device_path);
 
     usleep(100000);
