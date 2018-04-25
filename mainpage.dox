@@ -11,6 +11,6 @@ This driver reads data through serial port, parses and publishes those data in R
  
 > rosrun dmu_ros dmu_ros_node or
  
-> roslaunch dmu_ros dmu_ros.launch	
+> roslaunch dmu_ros dmu11.launch	
 
 */
