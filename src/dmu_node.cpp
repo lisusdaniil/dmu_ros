@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     if (nh.hasParam("device"))
         nh.getParam("/device", device_path);
     else
-        device_path = "/dev/ttyUSB0";
+        device_path = "/dev/ttyUSB1";
 
 
     imu->openPort(device_path);

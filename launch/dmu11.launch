@@ -1,6 +1,6 @@
 <launch>
   <arg name="with_rviz" default="true"/>
-  <arg name="device" default="/dev/ttyUSB0"/>
+  <arg name="device" default="/dev/ttyUSB1"/>
   <arg name="frame_id" default="imu"/>
   <arg name="rate" default="200"/>
 

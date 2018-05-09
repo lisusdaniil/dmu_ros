@@ -11,7 +11,7 @@ DMU11::DMU11(ros::NodeHandle &nh)
     terminate_flag_ = 0;
 
     // Read parameters
-    nh.param("device", device_, std::string("/dev/ttyUSB0"));
+    nh.param("device", device_, std::string("/dev/ttyUSB1"));
     nh.param("frame_id", frame_id_, std::string("imu"));
     nh.param("rate", rate_, 100.0);
 
