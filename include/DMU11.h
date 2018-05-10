@@ -19,7 +19,7 @@
 
 class DMU11
 {
-    ros::Publisher imuPub;
+    ros::Publisher imu_publisher_;
     std::string device_;
     std::string frame_id_;
     double rate_;
@@ -65,8 +65,6 @@ public:
     double d_pitch_ = 0;
     double d_yaw_ = 0;
 
-    volatile sig_atomic_t terminate_flag_;
-
 /**
  * @brief Constructor
  * @param nh
@@ -75,11 +73,10 @@ public:
 
 /**
  * @brief Open device
- * @param device Device file name (/dev/ttyUSB*)
  * @retval 0 Success
  * @retval -1 Failure
  */
-    int openPort(std::string device_path);
+    int openPort();
 
 /**
  * @brief Read the data received on serial port

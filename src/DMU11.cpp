@@ -3,33 +3,39 @@
 //
 
 #include <DMU11.h>
-#include <bitset>
 
 
 DMU11::DMU11(ros::NodeHandle &nh)
 {
-    terminate_flag_ = 0;
-
+    bool params = false;
     // Read parameters
-    nh.param("device", device_, std::string("/dev/ttyUSB1"));
+    while (!params)
+        try
+        {
+            params = nh.getParam("device", device_);
+        }
+        catch (ros::Exception &exception)
+        {
+            ROS_ERROR("Error %s", exception.what());
+        }
+
     nh.param("frame_id", frame_id_, std::string("imu"));
     nh.param("rate", rate_, 100.0);
 
-    imuPub = nh.advertise<sensor_msgs::Imu>("imu/data_raw", 10);
+    imu_publisher_ = nh.advertise<sensor_msgs::Imu>("imu/data_raw", 10);
 }
 
 
-
-int DMU11::openPort(std::string device_path)
+int DMU11::openPort()
 {
     int trials = 0;
     do
     {
         if (trials++ == 0)
-            std::cout << "Opening serial port: " << device_path.c_str() << " \n";
+            std::cout << "Opening serial port: " << device_.c_str() << " \n";
         else
             std::cout << "Couldn't open serial port... \n";
-        file_descriptor_ = open(device_path.c_str(), O_RDWR | O_NOCTTY);
+        file_descriptor_ = open(device_.c_str(), O_RDWR | O_NOCTTY);
         int opts = fcntl(file_descriptor_, F_GETFL);
         opts = opts & (O_NONBLOCK);
         fcntl(file_descriptor_, F_SETFL, opts);    /*configuration the port*/
@@ -44,8 +50,6 @@ int DMU11::openPort(std::string device_path)
             std::cout << "Couldn't get the current state.\n";
         diag = tcgetattr(file_descriptor_, &defaults_);
     } while (diag == -1 && errno == EINTR);
-    std::cout << "Current state is read.\n";
-
 
     if (cfsetispeed(&defaults_, B460800) < 0 || cfsetospeed(&defaults_, B460800) < 0)
     {
@@ -77,7 +81,7 @@ int DMU11::openPort(std::string device_path)
 
     unsigned char buff[3] = {0};
 
-    tcflush(file_descriptor_,TCIFLUSH);
+    tcflush(file_descriptor_, TCIFLUSH);
     if (tcdrain(file_descriptor_) < 0)
     {
         perror("flush");
@@ -102,12 +106,13 @@ int DMU11::openPort(std::string device_path)
         return -1;
     }
 
+    std::cout << "Started reading data from sensor...\n";
+
     return 0;
 }
 
 void DMU11::update()
 {
-
     unsigned char buff[68] = {0};
 
     int size = read(file_descriptor_, buff, 68);
@@ -118,7 +123,6 @@ void DMU11::update()
     }
     else
     {
-
         int16_t computed_checksum = 0;
         int16_t input16 = big_endian_to_short(&buff[0]);
         int16_t int16buff[34] = {0};
@@ -147,10 +151,7 @@ void DMU11::update()
         }
         else
         {
-
-            std::cout << "********************\n";
-            std::cout << "******Restart*******\n";
-            std::cout << "********************\n";
+            // Restart the stream
             unsigned char buff1[3] = {0};
             buff1[0] = 0x04;
             buff1[1] = 0x01;
@@ -158,12 +159,12 @@ void DMU11::update()
             size = write(file_descriptor_, buff1, 3);
             if (size != 3)
             {
-                perror("Start stream");
+                perror("Stop stream");
             }
 
             if (tcdrain(file_descriptor_) < 0)
             {
-                perror("Start stream");
+                perror("Stop stream");
             }
 
             usleep(100000);
@@ -206,7 +207,6 @@ void DMU11::closePort()
 }
 
 
-
 int16_t DMU11::big_endian_to_short(unsigned char *data)
 {
     unsigned char buff[2] = {data[1], data[0]};
@@ -221,10 +221,12 @@ float DMU11::short_to_float(int16_t *data)
 
 void DMU11::doParsing(int16_t *int16buff)
 {
+    // Accelerometer
     package_.axis_x_acc = short_to_float(&int16buff[4]) * g_; // We divide by g_ to convert from g's into m/s^2
     package_.axis_y_acc = short_to_float(&int16buff[8]) * g_;
     package_.axis_z_acc = short_to_float(&int16buff[12]) * g_;
 
+    // Gyro Rates
     package_.axis_x_rate = short_to_float(&int16buff[2]) * M_PI / 180; //Conver to rad/s
     package_.axis_y_rate = short_to_float(&int16buff[6]) * M_PI / 180;
     package_.axis_z_rate = short_to_float(&int16buff[10]) * M_PI / 180;
@@ -263,7 +265,7 @@ void DMU11::doParsing(int16_t *int16buff)
     raw_data_.orientation.z = q.z();
     raw_data_.orientation.w = q.w();
 
-    imuPub.publish(raw_data_);
+    imu_publisher_.publish(raw_data_);
 
 }
 
