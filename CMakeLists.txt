@@ -1,18 +1,12 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(dmu_ros)
 
-## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++0x)
-set(CMAKE_BUILD_TYPE Debug)
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
         sensor_msgs
         roscpp
-        tf
-        )
+        tf)
 
 catkin_package()
 
@@ -22,17 +16,24 @@ catkin_package()
 
 include_directories(
         include
-        ${catkin_INCLUDE_DIRS}
-)
+        ${catkin_INCLUDE_DIRS})
 
-add_library(DMU11_LIB
+
+add_executable(dmu_node src/dmu_node.cpp
         src/DMU11.cpp
-        include/DMU11.h
-        )
+        include/DMU11.h)
+target_link_libraries(dmu_node ${catkin_LIBRARIES})
 
-add_executable(${PROJECT_NAME}_node src/dmu_node.cpp)
-target_link_libraries(${PROJECT_NAME}_node
-        ${catkin_LIBRARIES} DMU11_LIB
-        )
+add_executable(simulation_node src/simulation_node.cpp)
+target_link_libraries(simulation_node ${catkin_LIBRARIES})
 
+#############
+## Install ##
+#############
+
+install(TARGETS dmu_node simulation_node
+        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
+install(DIRECTORY launch
+        DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
