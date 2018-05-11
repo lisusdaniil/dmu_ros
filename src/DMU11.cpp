@@ -12,15 +12,15 @@ DMU11::DMU11(ros::NodeHandle &nh)
     while (!params)
         try
         {
-            params = nh.getParam("device", device_);
+            params = nh.getParam("dmu_node/device", device_);
         }
         catch (ros::Exception &exception)
         {
             ROS_ERROR("Error %s", exception.what());
         }
 
-    nh.param("frame_id", frame_id_, std::string("imu"));
-    nh.param("rate", rate_, 100.0);
+    nh.param("dmu_node/frame_id", frame_id_, std::string("imu"));
+    nh.param("dmu_node/rate", rate_, 100.0);
 
     imu_publisher_ = nh.advertise<sensor_msgs::Imu>("imu/data_raw", 10);
 }
@@ -231,10 +231,12 @@ void DMU11::doParsing(int16_t *int16buff)
     package_.axis_y_rate = short_to_float(&int16buff[6]) * M_PI / 180;
     package_.axis_z_rate = short_to_float(&int16buff[10]) * M_PI / 180;
 
+    //
     package_.axis_x_delta_vel = short_to_float(&int16buff[20]);
     package_.axis_y_delta_vel = short_to_float(&int16buff[24]);
     package_.axis_z_delta_vel = short_to_float(&int16buff[28]);
 
+    // Delta theta
     package_.axis_x_delta_theta = short_to_float(&int16buff[18]) * M_PI / 180;
     package_.axis_y_delta_theta = short_to_float(&int16buff[22]) * M_PI / 180;
     package_.axis_z_delta_theta = short_to_float(&int16buff[26]) * M_PI / 180;

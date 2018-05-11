@@ -1,15 +1,20 @@
 <launch>
-  <arg name="with_rviz" default="true"/>
-  <arg name="device" default="/dev/ttyUSB1"/>
-  <arg name="frame_id" default="imu"/>
-  <arg name="rate" default="200"/>
+    <arg name="with_rviz" default="true"/>
 
-  <param if="$(arg with_rviz)" name="robot_description" command="$(find xacro)/xacro --inorder '$(find dmu_ros)/urdf/dmu11.urdf'" />
+    <group ns="dmu_node">
+        <param name="device" value="/dev/ttyUSB0"/>
+        <param name="frame_id" value="imu"/>
+        <param name="rate" value="200"/>
+    </group>
 
-  <node name="simualtion_node" pkg="dmu_ros" type="simulation_node"/>
+    <param if="$(arg with_rviz)" name="robot_description"
+           command="$(find xacro)/xacro --inorder '$(find dmu_ros)/urdf/dmu11.urdf'"/>
+
+    <node name="dmu_node" pkg="dmu_ros" type="dmu_node"/>
+    <node name="simualtion_node" pkg="dmu_ros" type="simulation_node"/>
 
 
-  <node if="$(arg with_rviz)"
-	name="rviz" pkg="rviz" type="rviz" args="-d $(find dmu_ros)/rviz/imu.rviz"/>
+    <node if="$(arg with_rviz)"
+          name="rviz" pkg="rviz" type="rviz" args="-d $(find dmu_ros)/rviz/imu.rviz"/>
 
 </launch>

@@ -7,7 +7,7 @@ std::shared_ptr<DMU11> imu;
 
 int main(int argc, char *argv[])
 {
-    ros::init(argc, argv, "dmu_ros");
+    ros::init(argc, argv, "dmu_node");
     ros::NodeHandle nh;
 
     imu = std::shared_ptr<DMU11>(new DMU11(nh));
