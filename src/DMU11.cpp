@@ -79,7 +79,21 @@ int DMU11::openPort()
 
     usleep(10000);
 
+    // Restart the stream
     unsigned char buff[3] = {0};
+    buff[0] = 0x04;
+    buff[1] = 0x01;
+    buff[2] = 0x00;  // Turn message stream off
+    int size = write(file_descriptor_, buff, 3);
+    if (size != 3)
+    {
+        perror("Stop stream");
+    }
+
+    if (tcdrain(file_descriptor_) < 0)
+    {
+        perror("Stop stream");
+    }
 
     tcflush(file_descriptor_, TCIFLUSH);
     if (tcdrain(file_descriptor_) < 0)
@@ -88,22 +102,21 @@ int DMU11::openPort()
         return -1;
     }
 
-    // Turn message stream on sequence
+    usleep(100000);
+    tcflush(file_descriptor_, TCIFLUSH);
+
     buff[0] = 0x04;
     buff[1] = 0x01;
-    buff[2] = 0x01;
-
-    int size = write(file_descriptor_, buff, 3);
+    buff[2] = 0x01;  // Turn message stream on
+    size = write(file_descriptor_, buff, 3);
     if (size != 3)
     {
         perror("Start stream");
-        return -1;
     }
 
     if (tcdrain(file_descriptor_) < 0)
     {
         perror("Start stream");
-        return -1;
     }
 
     std::cout << "Started reading data from sensor...\n";
@@ -151,40 +164,7 @@ void DMU11::update()
         }
         else
         {
-            // Restart the stream
-            unsigned char buff1[3] = {0};
-            buff1[0] = 0x04;
-            buff1[1] = 0x01;
-            buff1[2] = 0x00;  // Turn message stream off
-            size = write(file_descriptor_, buff1, 3);
-            if (size != 3)
-            {
-                perror("Stop stream");
-            }
-
-            if (tcdrain(file_descriptor_) < 0)
-            {
-                perror("Stop stream");
-            }
-
-            usleep(100000);
-            tcflush(file_descriptor_, TCIFLUSH);
-
-            buff1[0] = 0x04;
-            buff1[1] = 0x01;
-            buff1[2] = 0x01;  // Turn message stream on
-            size = write(file_descriptor_, buff1, 3);
-            if (size != 3)
-            {
-                perror("Start stream");
-            }
-
-            if (tcdrain(file_descriptor_) < 0)
-            {
-                perror("Start stream");
-            }
-            usleep(100000);
-
+            std::cout << "Dropped package\n";
         }
     }
 
