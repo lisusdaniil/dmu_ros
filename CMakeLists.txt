@@ -27,6 +27,9 @@ target_link_libraries(dmu_node ${catkin_LIBRARIES})
 add_executable(simulation_node src/simulation_node.cpp)
 target_link_libraries(simulation_node ${catkin_LIBRARIES})
 
+add_executable(delta_computations src/delta_computations.cpp)
+target_link_libraries(delta_computations ${catkin_LIBRARIES})
+
 #############
 ## Install ##
 #############
