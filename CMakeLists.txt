@@ -6,9 +6,19 @@ add_compile_options(-std=c++0x)
 find_package(catkin REQUIRED COMPONENTS
         sensor_msgs
         roscpp
-        tf)
+        tf
+        message_generation
+        )
 
-catkin_package()
+add_message_files(FILES
+        DMURaw.msg
+        )
+
+generate_messages(DEPENDENCIES
+        geometry_msgs
+        )
+
+catkin_package(CATKIN_DEPENDS message_runtime)
 
 ###########
 ## Build ##
@@ -23,6 +33,10 @@ add_executable(dmu_node src/dmu_node.cpp
         src/DMU11.cpp
         include/DMU11.h)
 target_link_libraries(dmu_node ${catkin_LIBRARIES})
+add_dependencies(dmu_node
+        ${catkin_EXPORTED_TARGETS}
+        ${PROJECT_NAME}_generate_messages_cpp
+        )
 
 add_executable(simulation_node src/simulation_node.cpp)
 target_link_libraries(simulation_node ${catkin_LIBRARIES})

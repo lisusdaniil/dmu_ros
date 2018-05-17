@@ -16,8 +16,7 @@ int main(int argc, char *argv[])
 
     usleep(100000);
 
-
-    ros::Rate rate(200);
+    ros::Rate rate(imu->rate_);
     while (ros::ok())
     {
         imu->update();

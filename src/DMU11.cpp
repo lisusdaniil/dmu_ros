@@ -20,9 +20,10 @@ DMU11::DMU11(ros::NodeHandle &nh)
         }
 
     nh.param("dmu_node/frame_id", frame_id_, std::string("imu"));
-    nh.param("dmu_node/rate", rate_, 100.0);
+    nh.param("dmu_node/rate", rate_, 200.0);
 
     imu_publisher_ = nh.advertise<sensor_msgs::Imu>("imu/data_raw", 10);
+    dmu_raw_publisher_ = nh.advertise<dmu_ros::DMURaw>("dmu/data_raw", 10);
 }
 
 
@@ -201,53 +202,60 @@ float DMU11::short_to_float(int16_t *data)
 
 void DMU11::doParsing(int16_t *int16buff)
 {
+    raw_package_.header.stamp = ros::Time::now();
+    raw_package_.header.frame_id = frame_id_;
+
+    imu_raw_.header.stamp = raw_package_.header.stamp;
+    imu_raw_.header.frame_id = frame_id_;
+
     // Accelerometer
-    package_.axis_x_acc = short_to_float(&int16buff[4]) * g_; // We divide by g_ to convert from g's into m/s^2
-    package_.axis_y_acc = short_to_float(&int16buff[8]) * g_;
-    package_.axis_z_acc = short_to_float(&int16buff[12]) * g_;
+    raw_package_.linear_acceleration.x = short_to_float(&int16buff[4]);
+    raw_package_.linear_acceleration.y = short_to_float(&int16buff[8]);
+    raw_package_.linear_acceleration.z = short_to_float(&int16buff[12]);
+
+    imu_raw_.linear_acceleration.x =
+            raw_package_.linear_acceleration.x * g_; // We multiply by g_ to convert from g's into m/s^2
+    imu_raw_.linear_acceleration.y = raw_package_.linear_acceleration.y * g_;
+    imu_raw_.linear_acceleration.z = raw_package_.linear_acceleration.z * g_;
 
     // Gyro Rates
-    package_.axis_x_rate = short_to_float(&int16buff[2]) * M_PI / 180; //Conver to rad/s
-    package_.axis_y_rate = short_to_float(&int16buff[6]) * M_PI / 180;
-    package_.axis_z_rate = short_to_float(&int16buff[10]) * M_PI / 180;
+    raw_package_.angular_rate.x = short_to_float(&int16buff[2]);
+    raw_package_.angular_rate.y = short_to_float(&int16buff[6]);
+    raw_package_.angular_rate.z = short_to_float(&int16buff[10]);
 
-    //
-    package_.axis_x_delta_vel = short_to_float(&int16buff[20]);
-    package_.axis_y_delta_vel = short_to_float(&int16buff[24]);
-    package_.axis_z_delta_vel = short_to_float(&int16buff[28]);
+    imu_raw_.angular_velocity.x = raw_package_.angular_rate.x * M_PI / 180; //Convert to rad/s
+    imu_raw_.angular_velocity.y = raw_package_.angular_rate.y * M_PI / 180;
+    imu_raw_.angular_velocity.z = raw_package_.angular_rate.z * M_PI / 180;
 
-    // Delta theta
-    package_.axis_x_delta_theta = short_to_float(&int16buff[18]) * M_PI / 180;
-    package_.axis_y_delta_theta = short_to_float(&int16buff[22]) * M_PI / 180;
-    package_.axis_z_delta_theta = short_to_float(&int16buff[26]) * M_PI / 180;
+    // Delta thetas
+    raw_package_.delta_theta.x = short_to_float(&int16buff[18]);
+    raw_package_.delta_theta.y = short_to_float(&int16buff[22]);
+    raw_package_.delta_theta.z = short_to_float(&int16buff[26]);
 
-    package_.system_startup_flags = int16buff[30];
-    package_.system_operat_flags = int16buff[31];
+    // Delta velocities
+    raw_package_.delta_velocity.x = short_to_float(&int16buff[20]);
+    raw_package_.delta_velocity.y = short_to_float(&int16buff[24]);
+    raw_package_.delta_velocity.z = short_to_float(&int16buff[28]);
 
-    raw_data_.header.frame_id = frame_id_;
-    raw_data_.header.stamp = ros::Time::now();
 
-    raw_data_.linear_acceleration.x = package_.axis_x_acc;
-    raw_data_.linear_acceleration.y = package_.axis_y_acc;
-    raw_data_.linear_acceleration.z = package_.axis_z_acc;
+    raw_package_.system_startup_flags = int16buff[30];
+    raw_package_.system_operat_flags = int16buff[31];
 
-    raw_data_.angular_velocity.x = package_.axis_x_rate;
-    raw_data_.angular_velocity.y = package_.axis_y_rate;
-    raw_data_.angular_velocity.z = package_.axis_z_rate;
 
-    d_roll_ = package_.axis_x_delta_theta;
-    d_pitch_ = package_.axis_y_delta_theta;
-    d_yaw_ = package_.axis_z_delta_theta;
+    roll_ += raw_package_.delta_theta.x * M_PI / 180;
+    pitch_ += raw_package_.delta_theta.y * M_PI / 180;
+    yaw_ += raw_package_.delta_theta.z * M_PI / 180;
 
     tf::Quaternion q;
-    q.setRPY(d_roll_, d_pitch_, d_yaw_);
+    q.setRPY(roll_, pitch_, yaw_);
 
-    raw_data_.orientation.x = q.x();
-    raw_data_.orientation.y = q.y();
-    raw_data_.orientation.z = q.z();
-    raw_data_.orientation.w = q.w();
+    imu_raw_.orientation.x = q.x();
+    imu_raw_.orientation.y = q.y();
+    imu_raw_.orientation.z = q.z();
+    imu_raw_.orientation.w = q.w();
 
-    imu_publisher_.publish(raw_data_);
+    imu_publisher_.publish(imu_raw_);
+    dmu_raw_publisher_.publish(raw_package_);
 
 }
 

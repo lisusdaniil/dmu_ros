@@ -7,6 +7,7 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
+#include <dmu_ros/DMURaw.h>
 #include <tf/tf.h>
 #include <termios.h>
 #include <string>
@@ -20,36 +21,11 @@
 class DMU11
 {
     ros::Publisher imu_publisher_;
+    ros::Publisher dmu_raw_publisher_;
     std::string device_;
     std::string frame_id_;
-    double rate_;
 
-    // DMU11 data package
-    struct dmu_package
-    {
-        //                              // WORD
-        int16_t msg_count;              //  1
-        float axis_x_rate;              //  2-3
-        float axis_x_acc;               //  4-5
-        float axis_y_rate;              //  6-7
-        float axis_y_acc;               //  8-9
-        float axis_z_rate;              //  10-11
-        float axis_z_acc;               //  12-13
-        //--Reserved--//
-        float average_imu_temp;         //  16-17
-        //-----------------------------------------
-        float axis_x_delta_theta;       //  18-19
-        float axis_x_delta_vel;         //  20-21
-        float axis_y_delta_theta;       //  22-23
-        float axis_y_delta_vel;         //  24-25
-        float axis_z_delta_theta;       //  26-27
-        float axis_z_delta_vel;         //  28-29
-        //-----------------------------------------
-        int16_t system_startup_flags;   //  30
-        int16_t system_operat_flags;    //  31
-
-    } package_;
-
+    dmu_ros::DMURaw raw_package_; //Custom message containing all DMU11 raw data.
 
     //Constants
     const double g_ = 9.80665;
@@ -59,11 +35,13 @@ class DMU11
 
 public:
 //IMU ROS format
-    sensor_msgs::Imu raw_data_;
+    sensor_msgs::Imu imu_raw_;
+    double rate_;
 
-    double d_roll_ = 0;
-    double d_pitch_ = 0;
-    double d_yaw_ = 0;
+
+    double roll_ = 0;
+    double pitch_ = 0;
+    double yaw_ = 0;
 
 /**
  * @brief Constructor
