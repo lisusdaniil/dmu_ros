@@ -1,11 +1,11 @@
 //
-// Created by leutrim on 11/04/18.
+// Created by leutrim on 11/04/18. Edited by lisusdaniil on 05/25/24
 //
 
-#include <DMU11.h>
+#include <DMU.h>
 
 
-DMU11::DMU11(ros::NodeHandle &nh)
+DMU::DMU(ros::NodeHandle &nh)
 {
     bool params = false;
     // Read parameters
@@ -27,7 +27,7 @@ DMU11::DMU11(ros::NodeHandle &nh)
 }
 
 
-int DMU11::openPort()
+int DMU::openPort()
 {
     int trials = 0;
     do
@@ -69,7 +69,7 @@ int DMU11::openPort()
     defaults_.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG /*| IEXTEN | ECHONL*/);
     defaults_.c_oflag &= ~OPOST;
 
-    defaults_.c_cc[VMIN] = 68;       //Minimum - two bytes
+    defaults_.c_cc[VMIN] = 2;       //Minimum - two bytes
     defaults_.c_cc[VTIME] = 0;
 
     if (tcsetattr(file_descriptor_, TCSANOW, &defaults_) != 0)
@@ -125,7 +125,7 @@ int DMU11::openPort()
     return 0;
 }
 
-void DMU11::update()
+void DMU::update()
 {
     unsigned char buff[68] = {0};
 
@@ -171,7 +171,7 @@ void DMU11::update()
 
 }
 
-void DMU11::closePort()
+void DMU::closePort()
 {
     if (tcsetattr(file_descriptor_, TCSANOW, &defaults_) < 0)
     {
@@ -188,19 +188,19 @@ void DMU11::closePort()
 }
 
 
-int16_t DMU11::big_endian_to_short(unsigned char *data)
+int16_t DMU::big_endian_to_short(unsigned char *data)
 {
     unsigned char buff[2] = {data[1], data[0]};
     return *reinterpret_cast<int16_t *>(buff);
 }
 
-float DMU11::short_to_float(int16_t *data)
+float DMU::short_to_float(int16_t *data)
 {
     int16_t buff[2] = {data[1], data[0]};
     return *reinterpret_cast<float *>(buff);
 }
 
-void DMU11::doParsing(int16_t *int16buff)
+void DMU::doParsing(int16_t *int16buff)
 {
     raw_package_.header.stamp = ros::Time::now();
     raw_package_.header.frame_id = frame_id_;
@@ -260,11 +260,7 @@ void DMU11::doParsing(int16_t *int16buff)
 }
 
 
-DMU11::~DMU11()
+DMU::~DMU()
 {
 
 }
-
-
-
-

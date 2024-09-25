@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<robot name="imu">
+    <link name="imu">
+        <visual>
+            <origin  rpy="3.14 0 0" xyz="0.1 -0.76 0.33" />
+            <geometry>
+                <mesh filename="package://dmu_ros/meshes/dmu41.stl" scale="0.04 0.04 0.04"/>
+            </geometry>
+        </visual>
+    </link>
+</robot>

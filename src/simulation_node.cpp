@@ -23,15 +23,15 @@ void imuCallback(const sensor_msgs::ImuConstPtr &imu_in)
     q.setZ(imu_in->orientation.z);
     q.setW(imu_in->orientation.w);
 
-    tf::Matrix3x3 m(q);
+    // tf::Matrix3x3 m(q);
 
-    m.getRPY(d_roll, d_pitch, d_yaw);
+    // m.getRPY(d_roll, d_pitch, d_yaw);
 
-    roll += d_roll;
-    pitch += d_pitch;
-    yaw += d_yaw;
+    // roll += d_roll;
+    // pitch += d_pitch;
+    // yaw += d_yaw;
 
-    q.setRPY(roll, pitch, yaw);
+    // q.setRPY(roll, pitch, yaw);
 
     transform.setOrigin(tf::Vector3(0, 0, 0));
     transform.setRotation(q);

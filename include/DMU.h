@@ -2,8 +2,8 @@
 // Created by leutrim on 11/04/18.
 //
 
-#ifndef DMU_ROS_DMU11_H
-#define DMU_ROS_DMU11_H
+#ifndef DMU_ROS_DMU_H
+#define DMU_ROS_DMU_H
 
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
@@ -18,14 +18,14 @@
 #include <fcntl.h>
 
 
-class DMU11
+class DMU
 {
     ros::Publisher imu_publisher_;
     ros::Publisher dmu_raw_publisher_;
     std::string device_;
     std::string frame_id_;
 
-    dmu_ros::DMURaw raw_package_; //Custom message containing all DMU11 raw data.
+    dmu_ros::DMURaw raw_package_; //Custom message containing all DMU raw data.
 
     //Constants
     const double g_ = 9.80665;
@@ -47,7 +47,7 @@ public:
  * @brief Constructor
  * @param nh
  */
-    DMU11(ros::NodeHandle &nh);
+    DMU(ros::NodeHandle &nh);
 
 /**
  * @brief Open device
@@ -87,9 +87,9 @@ public:
     void doParsing(int16_t *int16buff);
 
 
-    virtual ~DMU11();
+    virtual ~DMU();
 
 };
 
 
-#endif //DMU_ROS_DMU11_H
+#endif //DMU_ROS_DMU_H

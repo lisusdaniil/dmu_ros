@@ -5,6 +5,7 @@ logs/
 .catkin_tools/
 cmake-build-debug/
 .catkin_workspace
+.vscode/
 
 # Prerequisites
 *.d

@@ -1,16 +1,16 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <tf/transform_broadcaster.h>
-#include <DMU11.h>
+#include <DMU.h>
 
-std::shared_ptr<DMU11> imu;
+std::shared_ptr<DMU> imu;
 
 int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "dmu_node");
     ros::NodeHandle nh;
 
-    imu = std::shared_ptr<DMU11>(new DMU11(nh));
+    imu = std::shared_ptr<DMU>(new DMU(nh));
 
     imu->openPort();
 
