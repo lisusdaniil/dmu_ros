@@ -15,7 +15,14 @@ git clone https://github.com/lisusdaniil/dmu_ros
 ## Build Package
 ```
 cd ~/catkin_ws
+```
+then run
+```
 catkin_make
+```
+or
+```
+catkin build dmu_ros
 ```
 ## Source Package
 Add this command to your `~/.bashrc` file if you want this driver to be sourced automatically.

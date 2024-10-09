@@ -30,8 +30,8 @@ include_directories(
 
 
 add_executable(dmu_node src/dmu_node.cpp
-        src/DMU11.cpp
-        include/DMU11.h)
+        src/DMU.cpp
+        include/DMU.h)
 target_link_libraries(dmu_node ${catkin_LIBRARIES})
 add_dependencies(dmu_node
         ${catkin_EXPORTED_TARGETS}
