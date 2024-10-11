@@ -45,5 +45,5 @@ roslaunch dmu_ros dmu41.launch
 ```
 depending on the connected sensor. To run the driver in the background with no RVIZ, simply run
 ```
-roslaunch dmu_ros dmu_background
+roslaunch dmu_ros dmu_background.launch
 ```
