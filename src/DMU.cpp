@@ -3,10 +3,9 @@
 //
 
 #include <DMU.h>
+#include <ros/console.h>
 
-
-DMU::DMU(ros::NodeHandle &nh)
-{
+DMU::DMU(ros::NodeHandle &nh) {
     bool params = false;
     // Read parameters
     while (!params)
@@ -27,8 +26,7 @@ DMU::DMU(ros::NodeHandle &nh)
 }
 
 
-int DMU::openPort()
-{
+int DMU::openPort() {
     int trials = 0;
     do
     {
@@ -60,7 +58,6 @@ int DMU::openPort()
 
 
     // Define com port options
-    //
     defaults_.c_cflag |= (CLOCAL | CREAD);    // Enable the receiver and set local mode...
     defaults_.c_cflag &= ~(PARENB | CSIZE);  // No parity, mask character size bits
     defaults_.c_cflag |= CSTOPB;        //2 stop bits
@@ -125,54 +122,87 @@ int DMU::openPort()
     return 0;
 }
 
-void DMU::update()
-{
+
+void DMU::update() {
     unsigned char buff[68] = {0};
+    int size = 0;
 
-    int size = read(file_descriptor_, buff, 68);
-    if (size != 68)
-    {
-        perror("Partial Package Received.");
-        return;
-    }
-    else
-    {
-        int16_t computed_checksum = 0;
-        int16_t input16 = big_endian_to_short(&buff[0]);
-        int16_t int16buff[34] = {0};
+    // Loop to find the correct header
+    int num_loops = 0;
+    while (true) {
+        // Prevent inifnite loop
+        if (num_loops > 68) {
+            perror("Could not find header.");
+            break;
+        }
 
-        if (input16 == header_)
-        {
-            for (int i = 0; i < 66; i += 2)
-            {
-                int16buff[i / 2] = big_endian_to_short(&buff[i]);
-                computed_checksum += int16buff[i / 2];
-            }
+        // Read one byte at a time to search for the header
+        unsigned char byte;
+        int bytesRead = read(file_descriptor_, &byte, 1);
 
-            computed_checksum = ~computed_checksum + 0x0001;
+        if (bytesRead <= 0) {
+            perror("Error reading byte or stream ended.");
+            return;
+        }
 
-            int16_t checksum = big_endian_to_short(&buff[66]);
+        // Check if this byte matches the first byte of the header
+        if (byte == (header_ >> 8)) {  // Compare MSB of header
+            unsigned char nextByte;
+            bytesRead = read(file_descriptor_, &nextByte, 1);
 
-            if (checksum == computed_checksum)
-                doParsing(&int16buff[0]);
-            else
-            {
-                std::cout << "Package is corrupt...\n";
-                std::cout << "Checksum: " << checksum << "\n";
-                std::cout << "Computed Checksum: " << computed_checksum << "\n";
+            if (bytesRead <= 0) {
+                perror("Error reading second byte of header.");
                 return;
             }
+
+            // Check if the second byte matches the LSB of the header
+            if (nextByte == (header_ & 0xFF)) {  // Compare LSB of header
+                // Store the header bytes
+                buff[0] = byte;
+                buff[1] = nextByte;
+                size = 2;
+
+                // Read the remaining 66 bytes
+                while (size < 68) {
+                    int bytesRemaining = 68 - size;
+                    bytesRead = read(file_descriptor_, buff + size, bytesRemaining);
+
+                    if (bytesRead <= 0) {
+                        perror("Error reading remaining bytes.");
+                        return;
+                    }
+
+                    size += bytesRead;
+                }
+
+                break;  // Exit the header search loop
+            }
         }
-        else
-        {
-            std::cout << "Dropped package\n";
-        }
+
+        num_loops++;
     }
 
+    // Validate and parse the package
+    int16_t computed_checksum = 0;
+    int16_t int16buff[34] = {0};
+
+    for (int i = 0; i < 66; i += 2) {
+        int16buff[i / 2] = big_endian_to_short(&buff[i]);
+        computed_checksum += int16buff[i / 2];
+    }
+
+    computed_checksum = ~computed_checksum + 0x0001;
+    int16_t checksum = big_endian_to_short(&buff[66]);
+
+    if (checksum == computed_checksum) {
+        doParsing(&int16buff[0]);
+    } else {
+        perror("Corrupted package.");
+    }
 }
 
-void DMU::closePort()
-{
+
+void DMU::closePort() {
     if (tcsetattr(file_descriptor_, TCSANOW, &defaults_) < 0)
     {
         perror("closePort");
@@ -184,24 +214,22 @@ void DMU::closePort()
     } while (diag == -1);
 
     std::cout << "Serial Port got closed.";
-
 }
 
 
-int16_t DMU::big_endian_to_short(unsigned char *data)
-{
+int16_t DMU::big_endian_to_short(unsigned char *data) {
     unsigned char buff[2] = {data[1], data[0]};
     return *reinterpret_cast<int16_t *>(buff);
 }
 
-float DMU::short_to_float(int16_t *data)
-{
+
+float DMU::short_to_float(int16_t *data) {
     int16_t buff[2] = {data[1], data[0]};
     return *reinterpret_cast<float *>(buff);
 }
 
-void DMU::doParsing(int16_t *int16buff)
-{
+
+void DMU::doParsing(int16_t *int16buff) {
     raw_package_.header.stamp = ros::Time::now();
     raw_package_.header.frame_id = frame_id_;
 
@@ -256,11 +284,7 @@ void DMU::doParsing(int16_t *int16buff)
 
     imu_publisher_.publish(imu_raw_);
     dmu_raw_publisher_.publish(raw_package_);
-
 }
 
 
-DMU::~DMU()
-{
-
-}
+DMU::~DMU() {}

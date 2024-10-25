@@ -17,8 +17,7 @@ int main(int argc, char *argv[])
     usleep(100000);
 
     ros::Rate rate(imu->rate_);
-    while (ros::ok())
-    {
+    while (ros::ok()) {
         imu->update();
         ros::spinOnce();
         rate.sleep();
