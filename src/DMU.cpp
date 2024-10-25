@@ -85,18 +85,18 @@ int DMU::openPort() {
     int size = write(file_descriptor_, buff, 3);
     if (size != 3)
     {
-        perror("Stop stream");
+        perror("DMU: Stop stream");
     }
 
     if (tcdrain(file_descriptor_) < 0)
     {
-        perror("Stop stream");
+        perror("DMU: Stop stream");
     }
 
     tcflush(file_descriptor_, TCIFLUSH);
     if (tcdrain(file_descriptor_) < 0)
     {
-        perror("flush");
+        perror("DMU: flush");
         return -1;
     }
 
@@ -109,12 +109,12 @@ int DMU::openPort() {
     size = write(file_descriptor_, buff, 3);
     if (size != 3)
     {
-        perror("Start stream");
+        perror("DMU: Start stream");
     }
 
     if (tcdrain(file_descriptor_) < 0)
     {
-        perror("Start stream");
+        perror("DMU: Start stream");
     }
 
     std::cout << "Started reading data from sensor...\n";
@@ -132,7 +132,7 @@ void DMU::update() {
     while (true) {
         // Prevent inifnite loop
         if (num_loops > 68) {
-            perror("Could not find header.");
+            perror("DMU: Could not find header.");
             break;
         }
 
@@ -141,7 +141,7 @@ void DMU::update() {
         int bytesRead = read(file_descriptor_, &byte, 1);
 
         if (bytesRead <= 0) {
-            perror("Error reading byte or stream ended.");
+            perror("DMU: Error reading byte or stream ended.");
             return;
         }
 
@@ -151,7 +151,7 @@ void DMU::update() {
             bytesRead = read(file_descriptor_, &nextByte, 1);
 
             if (bytesRead <= 0) {
-                perror("Error reading second byte of header.");
+                perror("DMU: Error reading second byte of header.");
                 return;
             }
 
@@ -168,7 +168,7 @@ void DMU::update() {
                     bytesRead = read(file_descriptor_, buff + size, bytesRemaining);
 
                     if (bytesRead <= 0) {
-                        perror("Error reading remaining bytes.");
+                        perror("DMU: Error reading remaining bytes.");
                         return;
                     }
 
@@ -197,7 +197,7 @@ void DMU::update() {
     if (checksum == computed_checksum) {
         doParsing(&int16buff[0]);
     } else {
-        perror("Corrupted package.");
+        perror("DMU: Corrupted package.");
     }
 }
 
@@ -205,7 +205,7 @@ void DMU::update() {
 void DMU::closePort() {
     if (tcsetattr(file_descriptor_, TCSANOW, &defaults_) < 0)
     {
-        perror("closePort");
+        perror("DMU: closePort");
     }
     int diag;
     do
