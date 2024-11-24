@@ -21,8 +21,9 @@ DMU::DMU(ros::NodeHandle &nh) {
     nh.param("dmu_node/frame_id", frame_id_, std::string("imu"));
     nh.param("dmu_node/rate", rate_, 200.0);
 
-    imu_publisher_ = nh.advertise<sensor_msgs::Imu>("imu/data_raw", 10);
+    imu_publisher_ = nh.advertise<sensor_msgs::Imu>("dmu/imu", 10);
     dmu_raw_publisher_ = nh.advertise<dmu_ros::DMURaw>("dmu/data_raw", 10);
+    imu_counter_publisher_ = nh.advertise<dmu_ros::DMUCounter>("dmu/imu_counter", 10);
 }
 
 
@@ -117,6 +118,8 @@ int DMU::openPort() {
         perror("DMU: Start stream");
     }
 
+    msg_count_ = 0;
+
     std::cout << "Started reading data from sensor...\n";
 
     return 0;
@@ -133,6 +136,7 @@ void DMU::update() {
         // Prevent inifnite loop
         if (num_loops > 68) {
             perror("DMU: Could not find header.");
+            std::cerr << "Prev msg count: " << prev_msg_count_ << std::endl;
             break;
         }
 
@@ -198,6 +202,7 @@ void DMU::update() {
         doParsing(&int16buff[0]);
     } else {
         perror("DMU: Corrupted package.");
+        std::cerr << "Prev msg count: " << prev_msg_count_ << std::endl;
     }
 }
 
@@ -232,6 +237,9 @@ float DMU::short_to_float(int16_t *data) {
 void DMU::doParsing(int16_t *int16buff) {
     raw_package_.header.stamp = ros::Time::now();
     raw_package_.header.frame_id = frame_id_;
+    raw_package_.msg_count = int16buff[1];
+    // std::cerr << int16buff[1] << std::endl;
+    // perror("test");
 
     imu_raw_.header.stamp = raw_package_.header.stamp;
     imu_raw_.header.frame_id = frame_id_;
@@ -282,8 +290,26 @@ void DMU::doParsing(int16_t *int16buff) {
     imu_raw_.orientation.z = q.z();
     imu_raw_.orientation.w = q.w();
 
+    // Process msg_counter
+    msg_count_ += abs(abs(raw_package_.msg_count) - abs(prev_msg_count_));
+    if (abs(abs(raw_package_.msg_count) - abs(prev_msg_count_)) != 1)
+    {
+        perror("DMU: Missed message.");
+        std::cerr << "Msg count: " << raw_package_.msg_count << " Prev msg count: " << prev_msg_count_ << std::endl;
+    }
+    prev_msg_count_ = raw_package_.msg_count;
+
+    // Fill out IMU Counter topic
+    imu_counter_.header.stamp = raw_package_.header.stamp;
+    imu_counter_.header.frame_id = frame_id_;
+    imu_counter_.msg_count = msg_count_;
+    imu_counter_.system_startup_flags = raw_package_.system_startup_flags;
+    imu_counter_.system_operat_flags = raw_package_.system_operat_flags;
+    imu_counter_.imu = imu_raw_;
+
     imu_publisher_.publish(imu_raw_);
     dmu_raw_publisher_.publish(raw_package_);
+    imu_counter_publisher_.publish(imu_counter_);
 }
 
 

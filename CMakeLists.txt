@@ -12,13 +12,15 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_message_files(FILES
         DMURaw.msg
+        DMUCounter.msg
         )
 
 generate_messages(DEPENDENCIES
         geometry_msgs
+        sensor_msgs
         )
 
-catkin_package(CATKIN_DEPENDS message_runtime)
+catkin_package(CATKIN_DEPENDS message_runtime sensor_msgs)
 
 ###########
 ## Build ##

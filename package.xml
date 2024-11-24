@@ -1,14 +1,10 @@
 <package>
 
     <name>dmu_ros</name>
-    <version>0.1.0</version>
-    <description>The DMU11 ROS driver</description>
+    <version>1.1.0</version>
+    <description>The DMU ROS driver</description>
 
-    <maintainer email="leutrim.gruda@leomuhendislik.com">Leutrim Gruda</maintainer>
-    <maintainer email="info@leomuhendislik.com">Leo Muhdendislik</maintainer>
-    <author email="leutrim.gruda@leomuhendislik.com">Leutrim Gruda</author>
-    <url>http://ros.org/wiki/dmu11driver</url>
-
+    <maintainer email="daniil.lisus@robotics.utias.utoronto.ca">Daniil Lisus</maintainer>
 
     <license>BSD</license>
 

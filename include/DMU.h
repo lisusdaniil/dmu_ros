@@ -8,6 +8,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <dmu_ros/DMURaw.h>
+#include <dmu_ros/DMUCounter.h>
 #include <tf/tf.h>
 #include <termios.h>
 #include <string>
@@ -22,10 +23,12 @@ class DMU
 {
     ros::Publisher imu_publisher_;
     ros::Publisher dmu_raw_publisher_;
+    ros::Publisher imu_counter_publisher_;
     std::string device_;
     std::string frame_id_;
 
     dmu_ros::DMURaw raw_package_; //Custom message containing all DMU raw data.
+    dmu_ros::DMUCounter imu_counter_;
 
     //Constants
     const double g_ = 9.80665;
@@ -38,6 +41,8 @@ public:
     sensor_msgs::Imu imu_raw_;
     double rate_;
 
+    int32_t msg_count_ = 0;
+    int16_t prev_msg_count_ = 0;
 
     double roll_ = 0;
     double pitch_ = 0;
