@@ -136,7 +136,6 @@ void DMU::update() {
         // Prevent inifnite loop
         if (num_loops > 68) {
             perror("DMU: Could not find header.");
-            std::cerr << "Prev msg count: " << prev_msg_count_ << std::endl;
             break;
         }
 
@@ -202,7 +201,6 @@ void DMU::update() {
         doParsing(&int16buff[0]);
     } else {
         perror("DMU: Corrupted package.");
-        std::cerr << "Prev msg count: " << prev_msg_count_ << std::endl;
     }
 }
 
@@ -292,11 +290,6 @@ void DMU::doParsing(int16_t *int16buff) {
 
     // Process msg_counter
     msg_count_ += abs(abs(raw_package_.msg_count) - abs(prev_msg_count_));
-    if (abs(abs(raw_package_.msg_count) - abs(prev_msg_count_)) != 1)
-    {
-        perror("DMU: Missed message.");
-        std::cerr << "Msg count: " << raw_package_.msg_count << " Prev msg count: " << prev_msg_count_ << std::endl;
-    }
     prev_msg_count_ = raw_package_.msg_count;
 
     // Fill out IMU Counter topic
